@@ -5,8 +5,8 @@ import java.util.Random;
 public class Fish2 {
     private int x, y;
     private int speed;
-    private final int width = 30;
-    private final int height = 20;
+    private final int width = 50;
+    private final int height = 40;
     private int screenWidth;
     private Random random = new Random();
     private int waterLevel;

@@ -1,3 +1,10 @@
+
+
+/**
+ * Reprezentuje łódź gracza, jej ruch, fizykę oraz mechanikę haka.
+ * Klasa zarządza pozycją łodzi, jej prędkością z uwzględnieniem pędu,
+ * a także opuszczaniem i zwijaniem haka.
+ */
 public class Boat {
     private int boatX;
     private int boatY;
@@ -8,101 +15,122 @@ public class Boat {
     private final int hookSpeed = 5;
     private int screenWidth;
     private double speedMultiplier = 1.0;
-    private final int baseSpeed = 8;   // Zwiększona bazowa prędkość dla responsywności
+    private final int baseSpeed = 8;
     private int hookUpgradeLevel = 0;
     private int boatUpgradeLevel = 0;
-    // Dodajemy momentum dla płynniejszego sterowania
+
+    // Pola odpowiedzialne za symulację fizyki łodzi (płynny ruch)
     private float velocityX = 0f;
     private final float acceleration = 1.2f;
-    private final float friction = 0.85f;
+    private final float friction = 0.85f; // Współczynnik tarcia, spowalnia łódź
     private final float maxSpeed = 12f;
 
-    // Direction tracking for boat mirroring
+    // Zmienna do śledzenia kierunku łodzi (dla odbicia lustrzanego grafiki)
     private boolean facingLeft = false;
 
+    /**
+     * Konstruktor klasy Boat.
+     * @param screenWidth Szerokość ekranu gry.
+     * @param waterLevel Poziom wody, na którym unosi się łódź.
+     */
     public Boat(int screenWidth, int waterLevel) {
         this.screenWidth = screenWidth;
-        // Ustawiamy łódź na środku ekranu, tuż nad poziomem wody
-        boatX = screenWidth / 2 - boatWidth / 2;
-        boatY = waterLevel - boatHeight;
-        hookX = boatX + boatWidth / 2;
-        hookY = boatY + boatHeight;
+        this.boatX = screenWidth / 2 - boatWidth / 2; // Początkowa pozycja na środku ekranu
+        this.boatY = waterLevel - boatHeight;
+        this.hookX = boatX + boatWidth / 2;
+        this.hookY = boatY + boatHeight;
     }
 
+    /**
+     * Przyspiesza łódź w lewo.
+     */
     public void moveLeft() {
         velocityX -= acceleration * (speedMultiplier + boatUpgradeLevel * 0.2f);
-        velocityX = Math.max(velocityX, -maxSpeed);
-        facingLeft = true; // Update direction
+        velocityX = Math.max(velocityX, -maxSpeed); // Ograniczenie maksymalnej prędkości
+        facingLeft = true;
         updatePosition();
     }
 
+    /**
+     * Przyspiesza łódź w prawo.
+     */
     public void moveRight() {
         velocityX += acceleration * (speedMultiplier + boatUpgradeLevel * 0.2f);
-        velocityX = Math.min(velocityX, maxSpeed);
-        facingLeft = false; // Update direction
+        velocityX = Math.min(velocityX, maxSpeed); // Ograniczenie maksymalnej prędkości
+        facingLeft = false;
         updatePosition();
     }
 
+    /**
+     * Aktualizuje pozycję łodzi na podstawie jej prędkości i tarcia.
+     * Zapobiega wyjściu łodzi poza ekran.
+     */
     private void updatePosition() {
         boatX += (int)velocityX;
-        boatX = Math.max(0, Math.min(screenWidth - boatWidth, boatX));
+        boatX = Math.max(0, Math.min(screenWidth - boatWidth, boatX)); // Blokada na krawędziach ekranu
 
-        // GŁÓWNA ZMIANA: Haczyk zawsze podąża za łódką w poziomie
+        // Haczyk podąża za łódką, jego pozycja zależy od kierunku zwrotu łodzi
         if (facingLeft) {
-            hookX = boatX + (int)(boatWidth * 0.25);  // Left side when facing left
+            hookX = boatX + (int)(boatWidth * 0.25);
         } else {
-            hookX = boatX + (int)(boatWidth * 0.75);  // Right side when facing right
+            hookX = boatX + (int)(boatWidth * 0.75);
         }
 
-        // Zastosuj tarcie
+        // Zastosowanie tarcia do stopniowego wyhamowania łodzi
         velocityX *= friction;
         if (Math.abs(velocityX) < 0.1f) {
             velocityX = 0f;
         }
     }
 
+    /**
+     * Rozpoczyna opuszczanie haka, jeśli nie jest już opuszczony.
+     */
     public void dropHook() {
         if (!hookDropped) {
             hookDropped = true;
-            // Position hook based on boat direction
+            // Pozycja haka jest dostosowana do kierunku łodzi
             if (facingLeft) {
-                hookX = boatX + (int)(boatWidth * 0.25);  // Left side when facing left
+                hookX = boatX + (int)(boatWidth * 0.25);
             } else {
-                hookX = boatX + (int)(boatWidth * 0.75);  // Right side when facing right
+                hookX = boatX + (int)(boatWidth * 0.75);
             }
         }
     }
 
+    /**
+     * Aktualizuje pozycję haka oraz łodzi (jej tarcie).
+     * @param panelHeight Wysokość panelu gry, używana do określenia maksymalnej głębokości haka.
+     */
     public void updateHook(int panelHeight) {
-        // Aktualizuj pozycję łodzi (tarcie)
-        updatePosition();
+        updatePosition(); // Aktualizacja pozycji łodzi (efekt tarcia)
 
         if (hookDropped) {
-            // Prędkość haka może być zwiększona przez ulepszenie
-            hookY += hookSpeed + (hookUpgradeLevel * 1); // Zwiększamy prędkość haka o 1 piksel na poziom ulepszenia
-            // Haczyk zatrzyma się 20 pikseli przed dolną krawędzią ekranu
+            // Prędkość haka jest zwiększana przez ulepszenia
+            hookY += hookSpeed + (hookUpgradeLevel * 1);
+            // Haczyk jest zwijany po osiągnięciu dna (z marginesem)
             if (hookY > panelHeight - 20) {
                 hookDropped = false;
                 hookY = boatY + boatHeight;
             }
         }
-
-        // USUNIĘTA LOGIKA: Już nie sprawdzamy czy haczyk jest opuszczony
-        // Pozycja X haczyka jest zawsze aktualizowana w updatePosition()
     }
 
+    /**
+     * Resetuje (zwija) hak do pozycji początkowej przy łodzi.
+     */
     public void resetHook() {
         hookDropped = false;
-        // Position hook based on boat direction
+        // Pozycja haka jest dostosowana do kierunku łodzi
         if (facingLeft) {
-            hookX = boatX + (int)(boatWidth * 0.25);  // Left side when facing left
+            hookX = boatX + (int)(boatWidth * 0.25);
         } else {
-            hookX = boatX + (int)(boatWidth * 0.75);  // Right side when facing right
+            hookX = boatX + (int)(boatWidth * 0.75);
         }
         hookY = boatY + boatHeight;
     }
 
-    // Gettery dla rysowania
+    // Gettery i Settery
     public int getBoatX() { return boatX; }
     public int getBoatY() { return boatY; }
     public int getBoatWidth() { return boatWidth; }
@@ -110,31 +138,11 @@ public class Boat {
     public int getHookX() { return hookX; }
     public int getHookY() { return hookY; }
     public boolean isHookDropped() { return hookDropped; }
-
-    // Setter dla pozycji X łodzi
     public void setBoatX(int x) { this.boatX = x; }
-
-    public void setSpeedMultiplier(double multiplier) {  // Setter dla mnożnika
-        this.speedMultiplier = multiplier;
-    }
-
-    public void setHookUpgradeLevel(int level) {  // Dodajemy setter dla poziomu ulepszenia haczyka
-        this.hookUpgradeLevel = level;
-    }
-
-    public int getHookUpgradeLevel() {  // Dodajemy getter dla poziomu ulepszenia haczyka
-        return hookUpgradeLevel;
-    }
-
-    public void setBoatUpgradeLevel(int level) {  // Dodajemy setter dla poziomu ulepszenia łodzi
-        this.boatUpgradeLevel = level;
-    }
-
-    public int getBoatUpgradeLevel() {  // Dodajemy getter dla poziomu ulepszenia łodzi
-        return boatUpgradeLevel;
-    }
-
-    public boolean isFacingLeft() {  // Getter for boat direction
-        return facingLeft;
-    }
+    public void setSpeedMultiplier(double multiplier) { this.speedMultiplier = multiplier; }
+    public void setHookUpgradeLevel(int level) { this.hookUpgradeLevel = level; }
+    public int getHookUpgradeLevel() { return hookUpgradeLevel; }
+    public void setBoatUpgradeLevel(int level) { this.boatUpgradeLevel = level; }
+    public int getBoatUpgradeLevel() { return boatUpgradeLevel; }
+    public boolean isFacingLeft() { return facingLeft; }
 }
